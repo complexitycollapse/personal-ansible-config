@@ -3,7 +3,76 @@
   connection: local
   become: true
 
-  tasks:
-  - name: install htop
+  pre_tasks:
+  - name: update package cache
     package:
-      name: htop
+      update_cache: yes   
+
+  tasks:
+  - name: upgrade distribution
+    tags: full
+    package:
+      upgrade: dist
+
+  - name: install packages
+    package:
+      state: latest
+      name:
+        - htop
+        - tmux
+        - vim-nox
+        - emacs
+        - sudo
+        - hplip-gui
+        - simple-scan
+        - sbcl
+        - slime
+        - make
+        - fonts-inconsolata
+        - python3-psutil
+
+  - name: copy wallpaper file
+    copy:
+      src: files/wallpaper.jpg
+      dest: /usr/share/backgrounds/ansible-wallpaper.jpg
+      owner: root
+      group: root
+
+  - name: set wallpaper
+    become_user: cchooper
+    dconf:
+      key: "/org/gnome/desktop/background/picture-uri"
+      value: "'file:///usr/share/backgrounds/ansible-wallpaper.jpg'"
+
+  - name: set wallpaper position
+    become_user: cchooper
+    dconf:
+      key: "/org/gnome/desktop/background/picture-options"
+      value: "'zoom'"
+
+#  - name: copy .bashrc file
+#    copy:
+#      src: files/bashrc
+#      dest: /home/cchooper/.bashrc
+#      owner: cchooper
+#      group: cchooper
+
+  - name: add ansible user
+    user:
+      name: ansible-user
+      system: yes
+
+  - name: add ansible-user to sudoers
+    copy:
+      src: files/sudoer_ansible-user
+      dest: /etc/sudoers.d/ansible-user
+      owner: root
+      group: root
+      mode: 0440
+
+  - name: add ansible-pull cron job
+    cron:
+      name: ansible auto-provision
+      user: ansible-user
+      minute: "*/10"
+      job: ansible-pull -o -U https://github.com/complexitycollapse/personal-ansible-config.git
